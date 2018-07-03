@@ -275,12 +275,17 @@ let lens_generate_attr_rule =
          List.fold_right
            Options.update_from_arg
            args))
-    (fun ~loc ~path _ type_decls -> function
-      | [Some update_options] ->
-         let options = update_options Options.default in
-         List.map (generate_str_item_from_type_decl ~options ~loc)
-           type_decls
-      | _ -> [])
+    (fun ~loc ~path _ type_decls option_updaters ->
+      let update_options o =
+        List.fold_left (fun o -> function
+                      | Some f -> f o
+                      | None -> o)
+          o
+          option_updaters
+      in
+      let options = update_options Options.default in
+      List.map (generate_str_item_from_type_decl ~options ~loc)
+        type_decls)
 
 let () =
   Driver.register_transformation

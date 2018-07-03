@@ -19,7 +19,9 @@ let ignore1 t = set_triple_fst () t
 
 type vv = { v : int }
 and cc = { c : vv }
-           [@@lens generate]
+           [@@lens generate
+                ~self_arg_first]
+let _ = set_vv_v { v = 4 } 6
 
 let () =
   let open OUnit2 in
