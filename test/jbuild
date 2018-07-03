@@ -5,11 +5,9 @@
   (public_name ppx-lens-runtest)
   (modes (byte))
   (preprocess
-   (pps (ppxlib.metaquot)))
+   (pps (ppx_lens)))
   (libraries
-   (oUnit
-    ppxlib
-    ppx_lens))))
+   (oUnit))))
 
 (alias
  ((name runtest)
