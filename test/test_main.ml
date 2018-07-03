@@ -17,6 +17,10 @@ type ('a, 'b, 'c) trip =
 
 let ignore1 t = set_triple_fst () t
 
+type vv = { v : int }
+and cc = { c : vv }
+           [@@lens generate]
+
 let () =
   let open OUnit2 in
   run_test_tt_main

@@ -127,6 +127,15 @@ let _INLINE_ATTR =
   let loc = Location.none in
   Loc.make ~loc "ocaml.inline", PStr []
 
+(** [[@@ocaml.warning "-23"]] attribute;
+    disables warnings arising from:
+      { x with k = v } when x has only one field
+ *)
+let _NO_WARNING_ATTR =
+  let loc = Location.none in
+  Loc.make ~loc "ocaml.warning",
+  PStr [ Str.eval (Exp.constant (Const.string "-23")) ]
+
 (** generate "getter" lambda function:
     [fun { key } -> key]. *)
 let generate_getter_fun ~loc key =
@@ -146,7 +155,8 @@ let generate_setter_fun ~loc arg_order key =
   let self, self_lid = gen_symbol_loc_lid ~loc ~prefix:"self" in
   let newval, newval_lid = gen_symbol_loc_lid ~loc ~prefix:"newval" in
   Arg_order.fun2 ~loc arg_order Nolabel newval self
-    Exp.(record ~loc [ key, ident ~loc newval_lid ]
+    Exp.(record ~loc ~attrs:[ _NO_WARNING_ATTR ]
+           [ key, ident ~loc newval_lid ]
            (Some (ident ~loc self_lid)))
 
 let generate_setter_vb ~loc arg_order name key =
@@ -154,8 +164,8 @@ let generate_setter_vb ~loc arg_order name key =
     Pat.(var name)
     (generate_setter_fun ~loc arg_order key)
 
-(** generate value inding for "update" function, e.g.
-    [let update_posn_x ~f self = { p with x = f self.x }]. *)
+(** generate "updater" lambda function:
+    [fun ~f self -> { self with key = f self.key }]. *)
 let generate_update_fun ~loc arg_order label key =
   let self, self_lid = gen_symbol_loc_lid ~loc ~prefix:"self" in
   let func, func_lid = gen_symbol_loc_lid ~loc ~prefix:"func" in
@@ -165,7 +175,7 @@ let generate_update_fun ~loc arg_order label key =
            [ Nolabel, field ~loc (ident ~loc self_lid) key ])
   in
   Arg_order.fun2 ~loc arg_order label func self
-    Exp.(record ~loc
+    Exp.(record ~loc ~attrs:[ _NO_WARNING_ATTR ]
            [ key, func_application ]
            (Some (ident ~loc self_lid)))
 
