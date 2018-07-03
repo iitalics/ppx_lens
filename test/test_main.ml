@@ -3,7 +3,7 @@ module Posn = struct
   type t =
     { x : int
     ; y : int }
-      [@@lens generate ~no_field_prefix ]
+      [@@lens generate ~no_field_prefix]
 
   let bounce_left_wall : t -> t =
     update_x ~f:abs
@@ -12,9 +12,10 @@ end
 type ('a, 'b, 'c) trip =
   { fst : 'a ; snd : 'b ; thd : 'c }
     [@@lens generate
+         ~field_prefix:triple
          ~no_update]
 
-let ignore1 t = set_trip_fst () t
+let ignore1 t = set_triple_fst () t
 
 let () =
   let open OUnit2 in
