@@ -68,6 +68,7 @@ type options =
   ; o_gen_getter : bool          (* generate getter function? *)
   ; o_gen_setter : bool          (* generate setter function? *)
   ; o_gen_updater : bool         (* generate updater function? *)
+  ; o_gen_lenses : bool          (* generate lens values? *)
   }
 
 module Options = struct
@@ -83,6 +84,7 @@ module Options = struct
     ; o_gen_getter = true
     ; o_gen_setter = true
     ; o_gen_updater = true
+    ; o_gen_lenses = true
     }
 
   let update_from_arg (label, expr) (o : options) =
@@ -109,6 +111,10 @@ module Options = struct
     | Labelled "no_get" -> { o with o_gen_getter = false }
     | Labelled "no_set" -> { o with o_gen_setter = false }
     | Labelled "no_update" -> { o with o_gen_updater = false }
+    | Labelled "no_lens" -> { o with o_gen_lenses = false }
+    | Labelled "just_lens" -> { o with o_gen_getter = false
+                                     ; o_gen_setter = false
+                                     ; o_gen_updater = false }
 
     | _ ->
        raise Syntaxerr.(Error (Ill_formed_ast (loc, "unknown lens configuration")))
@@ -184,8 +190,22 @@ let generate_update_vb ~loc arg_order label name key =
     Pat.(var name)
     (generate_update_fun ~loc arg_order label key)
 
-(** generate all lens functions for a type with the given field names. *)
-let generate_lens_vbs ~options ~loc type_name field_idents =
+(** generate lens expression (paired encoding):
+    [<getter>, <setter>]. *)
+let generate_lens_expr ~loc key =
+  Exp.tuple ~loc
+    [ generate_getter_fun ~loc key
+    ; generate_setter_fun ~loc Self_last key ]
+
+let generate_lens_vb ~loc name key =
+  Vb.mk ~loc
+    Pat.(var name)
+    (generate_lens_expr ~loc key)
+
+(******************************)
+
+(** generate all lens bindings for a type with the given field names. *)
+let generate_all_vbs ~options ~loc type_name field_idents =
   (* TODO: per-field attributes *)
 
   let prefixed specific_prefix field_name =
@@ -226,9 +246,18 @@ let generate_lens_vbs ~options ~loc type_name field_idents =
           (Loc.make ~loc field_id))
       field_idents in
 
+  let gen_lens_vbs () =
+    List.map (fun field_id ->
+        let field_name = Lid.last_exn field_id in
+        generate_lens_vb ~loc
+          (Loc.make ~loc ("_" ^ field_name))
+          (Loc.make ~loc field_id))
+      field_idents in
+
   (if options.o_gen_getter then gen_get_vbs () else [])
   @ (if options.o_gen_setter then gen_set_vbs () else [])
   @ (if options.o_gen_updater then gen_upd_vbs () else [])
+  @ (if options.o_gen_lenses then gen_lens_vbs () else [])
 
 let type_decl_field_idents = function
   | { ptype_name
@@ -242,7 +271,7 @@ let type_decl_field_idents = function
 
 let generate_vbs_from_type_decl ~options ~loc type_decl =
   let type_name = type_decl.ptype_name.txt in
-  generate_lens_vbs ~options ~loc type_name
+  generate_all_vbs ~options ~loc type_name
     (type_decl_field_idents type_decl)
 
 let generate_str_item_from_type_decl ~options ~loc type_decl =
