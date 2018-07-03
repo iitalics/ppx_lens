@@ -3,19 +3,16 @@ module Posn = struct
   type t =
     { x : int
     ; y : int }
-      [@@lens.no_prefix]
-      [@@lens.no_get]
-      [@@lens.generate]
+      [@@lens generate ~no_field_prefix ]
 
   let bounce_left_wall : t -> t =
     update_x ~f:abs
-
 end
 
 type ('a, 'b, 'c) trip =
   { fst : 'a ; snd : 'b ; thd : 'c }
-    [@@lens.prefix_from_type]
-    [@@lens.generate]
+    [@@lens generate
+         ~no_update]
 
 let ignore1 t = set_trip_fst () t
 

@@ -85,8 +85,33 @@ module Options = struct
     ; o_gen_updater = true
     }
 
-  let update o =
-    o
+  let update_from_arg (label, expr) (o : options) =
+    let loc = expr.pexp_loc in
+    let expr_ident () =
+      match expr with
+      | { pexp_desc = Pexp_ident { txt = Lident x } } ->
+         x
+      | _ ->
+         raise Syntaxerr.(Error (Expecting (loc, "identifier")))
+    in
+    match label with
+    | Labelled "field_prefix" -> { o with o_field_prefix = Pre_always (expr_ident ()) }
+    | Labelled "no_field_prefix" -> { o with o_field_prefix = Pre_never }
+    | Labelled "self_arg_first" -> { o with o_arg_order = Self_first }
+
+    | Labelled "get_prefix" -> { o with o_get_prefix = Some (expr_ident ()) }
+    | Labelled "set_prefix" -> { o with o_set_prefix = expr_ident () }
+    | Labelled "update_prefix" -> { o with o_upd_prefix = expr_ident () }
+
+    | Labelled "func_named_arg" -> { o with o_upd_named = Some (expr_ident ()) }
+    | Labelled "func_no_named_arg" -> { o with o_upd_named = None }
+
+    | Labelled "no_get" -> { o with o_gen_getter = false }
+    | Labelled "no_set" -> { o with o_gen_setter = false }
+    | Labelled "no_update" -> { o with o_gen_updater = false }
+
+    | _ ->
+       raise Syntaxerr.(Error (Ill_formed_ast (loc, "unknown lens configuration")))
 
 end
 
@@ -195,53 +220,59 @@ let generate_lens_vbs ~options ~loc type_name field_idents =
   @ (if options.o_gen_setter then gen_set_vbs () else [])
   @ (if options.o_gen_updater then gen_upd_vbs () else [])
 
-(** generate list of [value_bindings]s for the given [type_declaration]. *)
-let generate_vbs_from_type_decl ~options ~loc = function
+let type_decl_field_idents = function
   | { ptype_name
     ; ptype_loc
     ; ptype_attributes
-    ; ptype_kind = Ptype_record lab_decls }
-    ->
-     (*
-     let options =
-       List.fold_left
-         Options.update_from_attr
-         options
-         ptype_attributes
-     in
-      *)
-     generate_lens_vbs ~options ~loc
-       ptype_name.txt
-       (List.map (fun { pld_name = { txt } } -> Lident txt)
-          lab_decls)
+    ; ptype_kind = Ptype_record lab_decls } ->
+     List.map (fun { pld_name = { txt } } -> Lident txt)
+       lab_decls
 
-  | _ ->
-     raise Syntaxerr.(Error (Expecting (loc, "record type")))
+  | { ptype_loc } -> raise Syntaxerr.(Error (Expecting (ptype_loc, "record type")))
 
-let generate_str_items_from_type_decl ~options ~loc type_decl =
+let generate_vbs_from_type_decl ~options ~loc type_decl =
+  let type_name = type_decl.ptype_name.txt in
+  generate_lens_vbs ~options ~loc type_name
+    (type_decl_field_idents type_decl)
+
+let generate_str_item_from_type_decl ~options ~loc type_decl =
   Str.value ~loc Nonrecursive
     (generate_vbs_from_type_decl ~options ~loc type_decl)
 
 (******************************)
 
+module Ast_pattern = struct
+  include Ast_pattern
+  let pexp_apply_ident ident : (expression, _, _) t =
+    let ident_pat () = pexp_ident (lident (string ident)) in
+    map (alt_option
+           (pexp_apply (ident_pat ()) __)
+           (ident_pat ()))
+      ~f:(fun f -> function
+        | None   -> f []
+        | Some y -> f y)
+end
+
+let lens_generate_attr_rule =
+  let module A = Attribute in
+  let open Ast_pattern in
+  (* [@lens generate <args ...>] *)
+  Context_free.Rule.attr_str_type_decl
+    (A.declare "lens"
+       A.Context.type_declaration
+       (pstr (pstr_eval (pexp_apply_ident "generate") __ ^:: nil))
+       (fun args _ ->
+         List.fold_right
+           Options.update_from_arg
+           args))
+    (fun ~loc ~path _ type_decls -> function
+      | [Some update_options] ->
+         let options = update_options Options.default in
+         List.map (generate_str_item_from_type_decl ~options ~loc)
+           type_decls
+      | _ -> [])
+
 let () =
-  let options =
-    Options.default
-  in
-  let lens_attr =
-    Attribute.(
-      declare "@lens.generate"
-        Context.type_declaration
-        Ast_pattern.(pstr nil)
-        ())
-  in
-  let type_decl_rule =
-    Context_free.Rule.attr_str_type_decl
-      lens_attr
-      (fun ~loc ~path rec_flag type_decls _ ->
-        List.map (generate_str_items_from_type_decl ~options ~loc)
-          type_decls)
-  in
   Driver.register_transformation
     "ppx_lens"
-    ~rules:[ type_decl_rule ]
+    ~rules: [ lens_generate_attr_rule ]
