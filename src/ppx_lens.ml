@@ -1,17 +1,17 @@
 open Ppxlib
 open Ast_helper
 
-module Lid = struct
-  include Longident
-  let mk ~loc last = Loc.make ~loc (Lident last)
-end
-
 module List = struct
   include List
 
   let rec flat_map ~f = function
     | [] -> []
     | x :: xs -> f x @ flat_map ~f xs
+end
+
+module Lid = struct
+  include Longident
+  let mk ~loc last = Loc.make ~loc (Lident last)
 end
 
 (****************************************)
@@ -30,16 +30,17 @@ type options =
   ; o_arg_order : arg_order      (* order of self arg *)
   ; o_get_prefix : string option (* prefix for getter funcs *)
   ; o_set_prefix : string        (* prefix for setter funcs *)
-  ; o_gen_setter : bool          (* generate setter function? *)
   ; o_upd_prefix : string        (* prefix for updater funcs *)
   ; o_upd_named : string option  (* named function argument to updater funcs *)
+  ; o_gen_getter : bool          (* generate getter function? *)
+  ; o_gen_setter : bool          (* generate setter function? *)
   ; o_gen_updater : bool         (* generate updater function? *)
   }
 
 module Options = struct
   type t = options
 
-  let _DEFAULT_PREFIX = Pre_never
+  let _DEFAULT_PREFIX = Pre_from_type
   let _DEFAULT_ARG_ORDER = Self_last
   let _DEFAULT_GET_PREFIX = None
   let _DEFAULT_SET_PREFIX = "set"
@@ -51,11 +52,49 @@ module Options = struct
     ; o_arg_order = _DEFAULT_ARG_ORDER
     ; o_get_prefix = _DEFAULT_GET_PREFIX
     ; o_set_prefix = _DEFAULT_SET_PREFIX
-    ; o_gen_setter = true
     ; o_upd_prefix = _DEFAULT_UPD_PREFIX
     ; o_upd_named = _DEFAULT_UPD_NAMED
+    ; o_gen_getter = true
+    ; o_gen_setter = true
     ; o_gen_updater = true
     }
+
+  let update_from_attr o attribute =
+    let { loc ; txt }, payload = attribute in
+    let string_of_payload_opt () =
+      match payload with
+      | PStr [ { pstr_desc = Pstr_eval (e, []) } ] ->
+         begin match e with
+         | { pexp_desc = Pexp_constant (Pconst_string (s, None)) } ->
+            Some s
+         | _ -> None
+         end
+      | _ -> None
+    in
+    let string_of_payload () =
+      match string_of_payload_opt () with
+       | Some pre -> pre
+       | _ -> raise Syntaxerr.(Error (Expecting (loc, "string constant")))
+    in
+    match txt with
+    | "lens.no_get" -> { o with o_gen_getter = false }
+    | "lens.no_set" -> { o with o_gen_setter = false }
+    | "lens.no_update" -> { o with o_gen_updater = false }
+
+    | "lens.no_prefix" -> { o with o_prefix = Pre_never }
+    | "lens.prefix_from_type" -> { o with o_prefix = Pre_from_type }
+    | "lens.prefix" -> { o with o_prefix = Pre_always (string_of_payload ()) }
+    | "lens.no_get_prefix" -> { o with o_get_prefix = None }
+    | "lens.get_prefix" -> { o with o_get_prefix = Some (string_of_payload ()) }
+    | "lens.set_prefix" -> { o with o_set_prefix = string_of_payload () }
+    | "lens.update_prefix" -> { o with o_upd_prefix = string_of_payload () }
+
+    | "lens.self_arg_first" -> { o with o_arg_order = Self_first }
+    | "lens.self_arg_last" -> { o with o_arg_order = Self_last }
+    | "lens.named_arg" -> { o with o_upd_named = Some (string_of_payload ()) }
+    | "lens.no_named_arg" -> { o with o_upd_named = None }
+
+    | _ -> o
 
 end
 
@@ -177,7 +216,7 @@ let generate_lens_vbs ~options ~loc type_name field_idents =
           (Loc.make ~loc field_id))
       field_idents in
 
-  gen_get_vbs ()
+  (if options.o_gen_getter then gen_get_vbs () else [])
   @ (if options.o_gen_setter then gen_set_vbs () else [])
   @ (if options.o_gen_updater then gen_upd_vbs () else [])
 
@@ -185,17 +224,24 @@ let generate_lens_vbs ~options ~loc type_name field_idents =
 let generate_vbs_from_type_decl ~options ~loc = function
   | { ptype_name
     ; ptype_loc
+    ; ptype_attributes
     ; ptype_kind = Ptype_record lab_decls }
     ->
+     let options =
+       List.fold_left
+         Options.update_from_attr
+         options
+         ptype_attributes
+     in
      generate_lens_vbs ~options ~loc
        ptype_name.txt
-       (List.map (fun { pld_name } -> Lident pld_name.txt)
+       (List.map (fun { pld_name = { txt } } -> Lident txt)
           lab_decls)
 
   | _ ->
      raise Syntaxerr.(Error (Expecting (loc, "record type")))
 
-let generate_stris_from_type_decl ~options ~loc type_decl =
+let generate_str_items_from_type_decl ~options ~loc type_decl =
   Str.value ~loc Nonrecursive
     (generate_vbs_from_type_decl ~options ~loc type_decl)
 
@@ -207,7 +253,7 @@ let () =
   in
   let lens_attr =
     Attribute.(
-      declare "generate_lens"
+      declare "@lens.generate"
         Context.type_declaration
         Ast_pattern.(pstr nil)
         ())
@@ -216,7 +262,7 @@ let () =
     Context_free.Rule.attr_str_type_decl
       lens_attr
       (fun ~loc ~path rec_flag type_decls _ ->
-        List.map (generate_stris_from_type_decl ~options ~loc)
+        List.map (generate_str_items_from_type_decl ~options ~loc)
           type_decls)
   in
   Driver.register_transformation

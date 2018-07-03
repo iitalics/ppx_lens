@@ -3,7 +3,8 @@ module Posn = struct
   type t =
     { x : int
     ; y : int }
-      [@@generate_lens]
+      [@@lens.no_prefix]
+      [@@lens.generate]
 
   let to_string { x ; y } =
     Printf.sprintf "{%d,%d}" x y
@@ -28,6 +29,16 @@ module Posn = struct
           end
       ]
 end
+
+type ('a, 'b, 'c) trip =
+  { fst : 'a ; snd : 'b ; thd : 'c }
+    [@@lens.prefix_from_type]
+    [@@lens.update_prefix "modify"]
+    [@@lens.no_named_arg]
+    [@@lens.generate]
+
+let foo : (int, 'a, 'b) trip -> (string, 'a, 'b) trip
+  = modify_trip_fst string_of_int
 
 let () =
   let open OUnit2 in
