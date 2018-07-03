@@ -1,0 +1,8 @@
+(jbuild_version 1)
+
+(library
+ ((name ppx_lens)
+  (public_name ppx_lens)
+  (kind ppx_rewriter)
+  (libraries
+   (ppxlib))))

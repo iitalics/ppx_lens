@@ -1,0 +1,7 @@
+opam-version: "1.2"
+version: "0.1"
+depends: [
+  jbuilder { build }
+  ounit { test }
+  ppxlib
+]

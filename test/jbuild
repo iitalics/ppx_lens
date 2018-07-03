@@ -1,0 +1,18 @@
+(jbuild_version 1)
+
+(executable
+ ((name test_main)
+  (public_name ppx-lens-runtest)
+  (modes (byte))
+  (preprocess
+   (pps (ppxlib.metaquot)))
+  (libraries
+   (oUnit
+    ppxlib
+    ppx_lens))))
+
+(alias
+ ((name runtest)
+  (deps ())
+  (action
+   (run ocamlrun ${exe:test_main.bc}))))
