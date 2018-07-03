@@ -3,14 +3,15 @@
 (executable
  ((name test_main)
   (public_name ppx-lens-runtest)
+  (package ppx_lens)
   (modes (byte))
   (preprocess
    (pps (ppx_lens)))
   (libraries
-   (oUnit))))
+   (oUnit
+    lenslib))))
 
 (alias
  ((name runtest)
-  (deps ())
   (action
    (run ocamlrun ${exe:test_main.bc}))))

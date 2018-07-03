@@ -1,10 +1,9 @@
-PKG=ppx_lens
 
 build:
-	jbuilder build -p $(PKG)
+	jbuilder build
 
 test:
-	jbuilder runtest -p $(PKG)
+	jbuilder runtest
 
 clean:
 	jbuilder clean
