@@ -123,11 +123,6 @@ end
 
 (****************************************)
 
-let gen_symbol_loc_lid ?(prefix="") ~loc =
-  let tmp = gen_symbol ~prefix () in
-  Loc.make ~loc tmp,
-  Loc.make ~loc (Longident.Lident tmp)
-
 (** [[@@ocaml.inline]] attribute *)
 let _INLINE_ATTR =
   let loc = Location.none in
@@ -141,6 +136,11 @@ let _NO_WARNING_ATTR =
   let loc = Location.none in
   Loc.make ~loc "ocaml.warning",
   PStr [ Str.eval (Exp.constant (Const.string "-23")) ]
+
+let gen_symbol_loc_lid ?(prefix="") ~loc =
+  let tmp = gen_symbol ~prefix () in
+  Loc.make ~loc tmp,
+  Loc.make ~loc (Longident.Lident tmp)
 
 (** generate "getter" lambda function:
     [fun { key } -> key]. *)
