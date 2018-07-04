@@ -250,7 +250,7 @@ let generate_all_vbs ~options ~loc type_name field_idents =
     List.map (fun field_id ->
         let field_name = Lid.last_exn field_id in
         generate_lens_vb ~loc
-          (Loc.make ~loc ("_" ^ field_name))
+          (Loc.make ~loc (prefixed (Some "") field_name))
           (Loc.make ~loc field_id))
       field_idents in
 
