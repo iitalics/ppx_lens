@@ -206,7 +206,10 @@ let generate_lens_vb ~loc name key =
 
 (** generate all lens bindings for a type with the given field names. *)
 let generate_all_vbs ~options ~loc type_name field_idents =
-  (* TODO: per-field attributes *)
+
+  let field_names =
+    List.map Lid.last_exn field_idents
+  in
 
   let prefixed specific_prefix field_name =
     let name = Prefix.apply type_name options.o_field_prefix field_name in
@@ -216,25 +219,24 @@ let generate_all_vbs ~options ~loc type_name field_idents =
   in
 
   let gen_get_vbs () =
-    List.map (fun field_id ->
-        let field_name = Lid.last_exn field_id in
+    List.map2 (fun field_id field_name ->
         generate_getter_vb ~loc
           (Loc.make ~loc (prefixed options.o_get_prefix field_name))
           (Loc.make ~loc field_id))
-      field_idents in
+      field_idents
+      field_names in
 
   let gen_set_vbs () =
-    List.map (fun field_id ->
-        let field_name = Lid.last_exn field_id in
+    List.map2 (fun field_id field_name ->
         generate_setter_vb ~loc
           options.o_arg_order
           (Loc.make ~loc (prefixed (Some options.o_set_prefix) field_name))
           (Loc.make ~loc field_id))
-      field_idents in
+      field_idents
+      field_names in
 
   let gen_upd_vbs () =
-    List.map (fun field_id ->
-        let field_name = Lid.last_exn field_id in
+    List.map2 (fun field_id field_name ->
         let label = match options.o_upd_named with
           | None -> Nolabel
           | Some k -> Labelled k
@@ -244,15 +246,15 @@ let generate_all_vbs ~options ~loc type_name field_idents =
           label
           (Loc.make ~loc (prefixed (Some options.o_upd_prefix) field_name))
           (Loc.make ~loc field_id))
-      field_idents in
+      field_idents field_names in
 
   let gen_lens_vbs () =
-    List.map (fun field_id ->
-        let field_name = Lid.last_exn field_id in
+    List.map2 (fun field_id field_name ->
         generate_lens_vb ~loc
           (Loc.make ~loc (prefixed (Some "") field_name))
           (Loc.make ~loc field_id))
-      field_idents in
+      field_idents
+      field_names in
 
   (if options.o_gen_getter then gen_get_vbs () else [])
   @ (if options.o_gen_setter then gen_set_vbs () else [])
