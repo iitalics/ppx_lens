@@ -1,7 +1,12 @@
 opam-version: "1.2"
+name: "ppx_lens"
 version: "0.1"
+maintainer: "iitalics"
+authors: ["iitalics <milo@ccs.neu.edu>"]
+homepage: ["https://notabug.org/iitalics/ppx_lens"]
+dev-repo: ["git+https://notabug.org/iitalics/ppx_lens.git"]
+build: [ "make" "ppx" ]
 depends: [
   jbuilder { build }
-  ounit { test }
   ppxlib
 ]

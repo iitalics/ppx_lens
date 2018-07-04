@@ -3,7 +3,7 @@
 (executable
  ((name test_main)
   (public_name ppx-lens-runtest)
-  (package ppx_lens)
+  (package ppx_lens_tests)
   (modes (byte))
   (preprocess
    (pps (ppx_lens)))
