@@ -5,17 +5,21 @@ module Posn = struct
   type t =
     { x : int
     ; y : int }
-      [@@lens generate ~no_field_prefix]
+      [@@lens generate]
 
   let bounce_left_wall : t -> t =
     update_x ~f:abs
 end
 
-type vv = { v : int }
-and cc = { c : vv }
-           [@@lens generate
-                ~self_arg_first
-                ~no_field_prefix]
+type player =
+  { pl_pos : Posn.t
+  ; pl_hp : int }
+    [@@lens generate
+         ~field_prefix:player]
+
+let dmg ~by : player -> player =
+  update_player_hp
+    ~f:(fun hp -> hp - by)
 
 let () =
   let open OUnit2 in
@@ -35,16 +39,27 @@ let () =
            assert_equal ~ctxt (false, 3) (Lens.set _1 (5, 3) false) ;
            end
 
-       ; "thrush1" >::
+       ; "dmg" >::
            begin fun ctxt ->
-           assert_equal ~ctxt 5 ({ c = { v = 5 } } ^. _c ^> _v) ;
+           let p1 = { pl_pos = { x = 3 ; y = 4 } ; pl_hp = 10 } in
+           let p2 = { pl_pos = { x = 3 ; y = 4 } ; pl_hp = 8 } in
+           assert_equal ~ctxt p2 (dmg ~by:2 p1) ;
            end
 
-       ; "thrush2" >::
+       ; "thrush1" >::
            begin fun ctxt ->
            let tup1 = (3, 5),   "a" in
            let tup2 = (3, "5"), "a" in
            assert_equal ~ctxt tup2
              (Lens.over (_1 ^> _2) tup1
                 ~f:string_of_int) ;
+           end
+
+       ; "thrush2" >::
+           begin fun ctxt ->
+           let p1 = { pl_pos = { x = 0 ; y = 0 } ; pl_hp = 10 } in
+           let p2 = { pl_pos = { x = 2 ; y = 0 } ; pl_hp = 10 } in
+           assert_equal ~ctxt p2
+             (Lens.set (_player_pos ^> Posn._x)
+                p1 2) ;
            end ]

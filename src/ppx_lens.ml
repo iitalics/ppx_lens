@@ -75,7 +75,7 @@ module Options = struct
   type t = options
 
   let default =
-    { o_field_prefix = Pre_from_type
+    { o_field_prefix = Pre_never
     ; o_arg_order = Self_last
     ; o_get_prefix = None
     ; o_set_prefix = "set"
@@ -98,7 +98,7 @@ module Options = struct
     in
     match label with
     | Labelled "field_prefix" -> { o with o_field_prefix = Pre_always (expr_ident ()) }
-    | Labelled "no_field_prefix" -> { o with o_field_prefix = Pre_never }
+    | Labelled "field_prefix_from_type" -> { o with o_field_prefix = Pre_from_type }
     | Labelled "self_arg_first" -> { o with o_arg_order = Self_first }
 
     | Labelled "get_prefix" -> { o with o_get_prefix = Some (expr_ident ()) }
@@ -204,11 +204,38 @@ let generate_lens_vb ~loc name key =
 
 (******************************)
 
+(** removes the common prefix from the list of strings, if any:
+    [remove_common_prefix ["a_x";"a_y"]] = [["x";"y"]]. *)
+let remove_common_prefix = function
+  | [] -> []
+  | [s] -> [s]
+  | s0::strs ->
+     let max_prefix_len =
+       List.fold_left (fun n s ->
+           min n (String.length s))
+         (String.length s0 - 1)
+         strs
+     in
+     let all_same_chr i =
+       List.for_all (fun s -> String.get s i = String.get s0 i)
+         strs
+     in
+     let rec find_prefix_len i =
+       if i < max_prefix_len && all_same_chr i then
+         find_prefix_len (i + 1)
+       else
+         i
+     in
+     let len = find_prefix_len 0 in
+     List.map (fun s -> String.sub s len (String.length s - len))
+       (s0 :: strs)
+
 (** generate all lens bindings for a type with the given field names. *)
 let generate_all_vbs ~options ~loc type_name field_idents =
 
   let field_names =
-    List.map Lid.last_exn field_idents
+    remove_common_prefix
+      (List.map Lid.last_exn field_idents)
   in
 
   let prefixed specific_prefix field_name =
