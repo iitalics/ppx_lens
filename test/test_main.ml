@@ -25,18 +25,32 @@ let () =
   let open OUnit2 in
   run_test_tt_main
   @@ test_list
-       [ "bounce_left_wall" >::
+       [ "_1" >::
+           begin fun ctxt ->
+           assert_equal ~ctxt 5 ((5, 3) ^. _1) ;
+           assert_equal ~ctxt (false, 3) (set _1 false (5, 3)) ;
+           end
+
+       ; "_id" >::
+           begin fun ctxt ->
+           assert_equal ~ctxt 5 (5 ^. _id) ;
+           assert_equal ~ctxt 6 ((_id ^~ 6) 5) ;
+           end
+
+       ; "_hd, _tl" >::
+           begin fun ctxt ->
+           assert_equal ~ctxt 4 ([4;3;2] ^. _hd) ;
+           assert_equal ~ctxt [4;2;1] (over _tl [4;3;2] ~f:(List.map pred)) ;
+           try ignore ([] ^. _hd) ; assert_failure "(view _hd) did not raise exn"
+           with (Match_failure _) -> () ;
+           end
+
+       ; "bounce_left_wall" >::
            begin fun ctxt ->
            Posn.(
              assert_equal ~ctxt
                { x = 2 ; y = 4 }
                (bounce_left_wall { x = -2 ; y = 4 }))
-           end
-
-       ; "_1" >::
-           begin fun ctxt ->
-           assert_equal ~ctxt 5 ((5, 3) ^. _1) ;
-           assert_equal ~ctxt (false, 3) (set _1 false (5, 3)) ;
            end
 
        ; "dmg" >::
