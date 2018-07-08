@@ -1,6 +1,27 @@
 open Lenslib.Infix
 open Lenslib
 
+(*--------------------------------------------*)
+(* type check tests *)
+
+type single_field_record =
+  { sfr : int } [@@lens generate]
+let _: int = sfr { sfr = 4 }
+
+type long_prefix =
+  { long_prefix_first : string
+  ; long_prefix_second : string }
+    [@@lens generate ~field_prefix:lpre]
+let _: long_prefix -> string = lpre_first
+
+type no_underscore_prefix =
+  { yes : int
+  ; yeah : int } [@@lens generate]
+let _: no_underscore_prefix -> int = view _yes
+
+(*--------------------------------------------*)
+(* examples lenses / usage *)
+
 module Posn = struct
   type t =
     { x : int
@@ -20,6 +41,8 @@ type player =
 let dmg ~by : player -> player =
   update_player_hp
     ~f:(fun hp -> hp - by)
+
+(*--------------------------------------------*)
 
 let () =
   let open OUnit2 in

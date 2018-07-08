@@ -205,29 +205,29 @@ let generate_lens_vb ~loc name key =
 (******************************)
 
 (** removes the common prefix from the list of strings, if any:
-    [remove_common_prefix ["a_x";"a_y"]] = [["x";"y"]]. *)
+    [remove_common_prefix ["a_x";"a_y"]] = [["x";"y"]].
+    a "prefix" must be delimeted by an underscore. *)
 let remove_common_prefix = function
   | [] -> []
   | [s] -> [s]
   | s0::strs ->
-     let max_prefix_len =
-       List.fold_left (fun n s ->
-           min n (String.length s))
-         (String.length s0 - 1)
-         strs
+     let next_underscore i =
+       try Some (1 + String.index_from s0 i '_')
+       with Not_found -> None
      in
-     let all_same_chr i =
-       List.for_all (fun s -> String.get s i = String.get s0 i)
-         strs
+     let shared_prefix n =
+       try strs |>
+             List.for_all (fun s ->
+                 String.sub s0 0 n = String.sub s 0 n)
+       with Invalid_argument _ -> false
      in
      let rec find_prefix_len i =
-       if i < max_prefix_len && all_same_chr i then
-         find_prefix_len (i + 1)
-       else
-         i
+       match next_underscore i with
+       | Some i' when shared_prefix i' -> find_prefix_len i'
+       | _ -> i
      in
-     let len = find_prefix_len 0 in
-     List.map (fun s -> String.sub s len (String.length s - len))
+     let n = find_prefix_len 0 in
+     List.map (fun s -> String.(sub s n (length s - n)))
        (s0 :: strs)
 
 (** generate all lens bindings for a type with the given field names. *)
