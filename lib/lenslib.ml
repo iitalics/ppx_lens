@@ -4,8 +4,8 @@ type ('s, 't, 'a, 'b) lens =
 type ('s, 'a) lens' =
   ('s, 's, 'a, 'a) lens
 
-let _1 : ('x * 'a, 'y * 'a, 'x, 'y) lens = fst, fun x (_, y) -> x, y
-let _2 : ('a * 'x, 'a * 'y, 'x, 'y) lens = snd, fun y (x, _) -> x, y
+let _1 = fst, fun x (_, y) -> x, y
+let _2 = snd, fun y (x, _) -> x, y
 
 let[@ocaml.inline] view lns s : 'a =
   fst lns s
