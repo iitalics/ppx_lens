@@ -36,7 +36,7 @@ let () =
        ; "_1" >::
            begin fun ctxt ->
            assert_equal ~ctxt 5 ((5, 3) ^. _1) ;
-           assert_equal ~ctxt (false, 3) (set _1 (5, 3) false) ;
+           assert_equal ~ctxt (false, 3) (set _1 false (5, 3)) ;
            end
 
        ; "dmg" >::
@@ -60,6 +60,5 @@ let () =
            let p1 = { pl_pos = { x = 0 ; y = 0 } ; pl_hp = 10 } in
            let p2 = { pl_pos = { x = 2 ; y = 0 } ; pl_hp = 10 } in
            assert_equal ~ctxt p2
-             (set (_player_pos ^> Posn._x)
-                p1 2) ;
+             (set (_player_pos ^> Posn._x) 2 p1) ;
            end ]
