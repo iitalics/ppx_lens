@@ -1,7 +1,10 @@
 opam-version: "1.2"
-version: "0.1"
+version: "0.1.0"
 build: [ "jbuilder" "build" "-p" name "-j" jobs ]
 depends: [
-  jbuilder { build }
-  ppxlib
+  "jbuilder" { build }
+  "ppxlib" { >= "0.3.0" }
+  "ounit" { >= "2.0.0" }
+  "lenslib" { >= "0.1.0" }
+  "ppx_lens" { >= "0.1.0" }
 ]

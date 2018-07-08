@@ -1,11 +1,11 @@
 opam-version: "1.2"
 name: "lenslib"
-version: "0.1"
+version: "0.1.0"
 maintainer: "iitalics"
 authors: ["iitalics <milo@ccs.neu.edu>"]
 homepage: ["https://notabug.org/iitalics/ppx_lens"]
 dev-repo: ["git+https://notabug.org/iitalics/ppx_lens.git"]
 build: [ "make" "lib" ]
 depends: [
-  jbuilder { build }
+  "jbuilder" { build }
 ]
